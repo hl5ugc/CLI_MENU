@@ -26,7 +26,7 @@ Data Stack size         : 2048
 #include <delay.h>
 #include <stdio.h>
 #include "UART.h"
-
+#include "cli.h"
 
 uint8_t msg[50] ;
 static uint8_t  u8Count  = 0 ;
@@ -152,6 +152,36 @@ void main(void)
 
 // Global enable interrupts
     #asm("sei")
+    //
+    uartInit();
+    uartOpen(_DEF_UART1,38400);
+    uartOpen(_DEF_UART2,38400);
+    //
+    cliInit();
+    cliOpen(_DEF_UART2,38400);
+    cliOpenLog(_DEF_UART1,38400);
+    //
+    uartMsg(_DEF_UART1,"Log...");
+    uartMsg(_DEF_UART2,"Start CLI");
+    delay_ms(100);
+    cliShowPrompt1();
+
+    while(1)
+    {
+
+        /*
+        if(uartAvailable(1) > 0) {
+
+           UDR1 =  uartRead(1) ;
+        }
+        */
+        if(cliMain() ==  false )
+        {
+            uartMsg(_DEF_UART2,"CLI Error");
+            delay_ms(500);
+        }
+        //
+    }
     //
     uartInit();
     uartOpen(1,38400);

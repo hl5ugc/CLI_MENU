@@ -23,6 +23,7 @@
 //
 //
 //
+#pragma used+
 
 #include "UartBuff.H"
 
@@ -293,3 +294,7 @@ void  qUartbufferFlush(qUartBuff_t *p_node)
     p_node->wr_ptr = 0 ;
     p_node->count  = 0 ;
 }
+
+
+
+#pragma used- /* uartbuffer */

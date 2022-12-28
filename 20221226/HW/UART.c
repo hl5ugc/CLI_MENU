@@ -22,6 +22,7 @@
 //
 //
 //
+#pragma used+
 //
 #include "Uart.H"
 #include "UartBuff.H"
@@ -57,6 +58,7 @@ typedef struct
 
 typedef void (*cbuart_t)(uint8_t);
 static  uart_cb_tbl_t uart_cb_tbl[HW_UART_MAX_CH] ;
+
 // ---------------------------------------------------------------------------
 //  Define Constants.
 // ---------------------------------------------------------------------------
@@ -74,6 +76,8 @@ static  uart_cb_tbl_t uart_cb_tbl[HW_UART_MAX_CH] ;
 static uint8_t is_Open[UART_MAX_CH] ;
 static qUartBuff_t qUartTxBuff[UART_MAX_CH] ;
 static qUartBuff_t qUartRxBuff[UART_MAX_CH] ;
+
+
 //
 #ifdef      _USE_UART0_
 static uint8_t tx_buf0[UART0_TX_MAX_BUFF] ;
@@ -126,7 +130,22 @@ void      uartWrite(uint8_t ch, uint8_t *p_data, uint32_t length);
  * eeprom char * eeprom eeprom_ptr_to_eeprom="This string is placed in EEPROM";
  *
  */
+void uartFMsg(uint8_t ch,flash uint8_t *pBuf)
+{
+    uint8_t u8Msg[32] ;
+    uint8_t u8len = 0 ;
+    //
+    while(*pBuf != 0x00)
+    {
+        u8Msg[u8len] = *pBuf ;
+        pBuf++ ;
+        u8len++ ;
+        //
 
+    }
+    //
+    uartMsgWrite(ch,&u8Msg[0],u8len);
+}
 void uartMsg(uint8_t ch, uint8_t *pBuf)
 {
     uartMsgWrite(ch,pBuf,strlen(pBuf));
@@ -197,7 +216,11 @@ void uartMsgByte7BASC(uint8_t ch, uint8_t *pBuf,uint8_t u8Data)
     cvtByte7BASC(u8Data,&u8Msg[0]) ;
     uartMsgWrite(ch,u8Msg,8);
 }
-
+void uartMsgStr(uint8_t ch, uint8_t *pBuf,uint8_t *u8Str)
+{
+    uartMsgWrite(ch,pBuf,strlen(pBuf));
+    uartMsgWrite(ch,u8Str,strlen(u8Str));
+}
 //
 //
 //
@@ -215,11 +238,15 @@ uint8_t   uartInit(void)
 /*
  *
  */
-uint8_t   uartOpen(uint8_t ch, uint16_t baud)
+bool uartOpen(uint8_t ch, uint16_t baud)
 {
+    bool bRet = false ;
+    //
     uint16_t u16Baud = 0x0067 ;
     uint8_t  u8TxLenth = 0 ;
     uint8_t  u8RxLenth = 0 ;
+    uint8_t  *pRxd_buff ;
+    uint8_t  *pTxd_buff ;
     //
     switch(baud)
     {
@@ -237,8 +264,6 @@ uint8_t   uartOpen(uint8_t ch, uint16_t baud)
                     break ;
     }
     //
-    is_Open[ch] = true ;
-    //
     switch(ch)
     {
         #ifdef _USE_UART0_
@@ -251,6 +276,11 @@ uint8_t   uartOpen(uint8_t ch, uint16_t baud)
                             //
                             u8TxLenth =  UART0_TX_MAX_BUFF ;
                             u8RxLenth =  UART0_RX_MAX_BUFF ;
+                            //
+                            is_Open[ch] = true ;
+                            bRet = true ;
+                            pRxd_buff = &rx_buf0[0] ;
+                            pTxd_buff = &tx_buf0[0] ;
                             break ;
         #endif
         //
@@ -264,6 +294,11 @@ uint8_t   uartOpen(uint8_t ch, uint16_t baud)
                             //
                             u8TxLenth =  UART1_TX_MAX_BUFF ;
                             u8RxLenth =  UART1_RX_MAX_BUFF ;
+                            //
+                            is_Open[ch] = true ;
+                            bRet = true ;
+                            pRxd_buff = &rx_buf1[0] ;
+                            pTxd_buff = &tx_buf1[0] ;
                             break ;
         #endif
         //
@@ -277,6 +312,11 @@ uint8_t   uartOpen(uint8_t ch, uint16_t baud)
                             //
                             u8TxLenth =  UART2_TX_MAX_BUFF ;
                             u8RxLenth =  UART2_RX_MAX_BUFF ;
+                            //
+                            is_Open[ch] = true ;
+                            bRet = true ;
+                            pRxd_buff = &rx_buf2[0] ;
+                            pTxd_buff = &tx_buf2[0] ;
                             break ;
         #endif
         //
@@ -290,15 +330,24 @@ uint8_t   uartOpen(uint8_t ch, uint16_t baud)
                             //
                             u8TxLenth =  UART3_TX_MAX_BUFF ;
                             u8RxLenth =  UART3_RX_MAX_BUFF ;
+                            //
+                            is_Open[ch] = true ;
+                            bRet = true ;
+                            pRxd_buff = &rx_buf3[0] ;
+                            pTxd_buff = &tx_buf3[0] ;
                             break ;
         #endif
     }
     //
-    qUartbufferCreate(&qUartTxBuff[ch],&rx_buf1[0],u8RxLenth);
-    qUartbufferCreate(&qUartRxBuff[ch],&tx_buf1[0],u8TxLenth);
+    if(is_Open[ch] == true)
+    {
+        qUartbufferCreate(&qUartTxBuff[ch],pTxd_buff,u8TxLenth);
+        qUartbufferCreate(&qUartRxBuff[ch],pRxd_buff,u8RxLenth);
+        //
+        uart_cb_tbl[ch].callBackUartRx = NULL ;
+    }
     //
-    uart_cb_tbl[ch].callBackUartRx = NULL ;
-
+    return  bRet ;
 }
 
 /*
@@ -346,12 +395,12 @@ uint8_t uartAvailable(uint8_t ch)
     return u8Ret ;
 }
 /*
- *  Rx Data read byte Check
+ *  Rx Data qbuff read byte
  */
 uint8_t  uartRead(uint8_t ch)
 {
     uint8_t u8Ret = 0 ;
-    //
+    // TODO Check Receive
     qUartbufferReadByte(&qUartRxBuff[ch],&u8Ret);
     //
     return u8Ret ;
@@ -458,6 +507,7 @@ void uartMsgWrite(uint8_t ch, uint8_t *p_data, uint8_t length)
     }
 
 }
+
 /*
 uartPrintf(p_cli->log_ch, "Cursor  : %d\n", p_cli->line.cursor);
 uartPrintf(p_cli->log_ch, "buf     : %s\n", p_cli->line.buf);
@@ -533,6 +583,10 @@ interrupt [USART0_RXC] void usart0_rx_isr(void)
     {
         (*uart_cb_tbl[0].callBackUartRx)(u8Data);
     }
+    else
+    {
+        qUartbufferWriteByte(&qUartRxBuff[0], &u8Data) ;
+    }
     // -----------------------------------------------------------
     /*
     if(data == PC_STX)
@@ -583,6 +637,11 @@ interrupt [USART1_RXC] void usart1_rx_isr(void)
     {
         (*uart_cb_tbl[1].callBackUartRx)(u8Data);
     }
+    else
+    {
+        qUartbufferWriteByte(&qUartRxBuff[1], &u8Data) ;
+        //UDR0 = u8Data ;
+    }
     //
 }
 // --------------------------------------------------------------
@@ -612,6 +671,10 @@ interrupt [USART2_RXC] void usart2_rx_isr(void)
     if(uart_cb_tbl[2].callBackUartRx != NULL)
     {
         (*uart_cb_tbl[2].callBackUartRx)(u8Data);
+    }
+    else
+    {
+        qUartbufferWriteByte(&qUartRxBuff[2], &u8Data) ;
     }
 }
 // --------------------------------------------------------------
@@ -643,6 +706,10 @@ interrupt [USART3_RXC] void usart3_rx_isr(void)
     {
         (*uart_cb_tbl[3].callBackUartRx)(u8Data);
     }
+    else
+    {
+        qUartbufferWriteByte(&qUartRxBuff[3], &u8Data) ;
+    }
 
 }
 // --------------------------------------------------------------
@@ -666,3 +733,7 @@ void canSetCallback(uint8_t ch, void (*callBackUartRx)(uint8_t))
     uart_cb_tbl[ch].callBackUartRx = callBackUartRx  ;
 }
 #endif
+
+#pragma used-
+
+

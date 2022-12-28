@@ -6,7 +6,7 @@
 // [ E-MAIL    ] hl5ugc@nate.com (82)10- 3841-9706
 // [ C  P  U   ]
 // [ Compller  ] CodeWizardAVR V3.12 Professional
-// [ Filename  ] HW_DEF.H
+// [ Filename  ] CLI.H
 // [ Version   ] 1.0
 // [ Created   ] 2022-12-21
 // ----------------------------------------------------------------------------
@@ -19,18 +19,24 @@
 // =============================================================================
 //
 //
-#ifndef SRC_HW_HW_DEF_H_
-#define SRC_HW_HW_DEF_H_
-
-#include "def.h"
-
-#define _USE_HW_UART
-#define     HW_UART_MAX_CH         4
-
-#define _USE_HW_CLI
-#define     HW_CLI_LINE_HIS_MAX    4
-#define     HW_CLI_LINE_BUF_MAX    32
+#ifndef CLI_COMMON_DEF_H_
+#define CLI_COMMON_DEF_H_
 
 
+#include "HW_DEF.H"
 
-#endif /* SRC_HW_HW_DEF_H_ */
+
+#ifdef _USE_HW_CLI
+#define CLI_LINE_HIS_MAX    HW_CLI_LINE_HIS_MAX
+#define CLI_LINE_BUF_MAX    HW_CLI_LINE_BUF_MAX
+
+
+bool cliInit(void);
+bool cliOpen(uint8_t ch, uint16_t u16Baud);
+bool cliOpenLog(uint8_t ch, uint16_t u16Baud);
+bool cliMain(void);
+void cliShowPrompt1(void);
+
+#endif
+
+#endif  /* SRC_HW_HW_DEF_H_ */
